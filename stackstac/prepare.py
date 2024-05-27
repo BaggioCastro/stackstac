@@ -21,6 +21,7 @@ import affine
 import numpy as np
 import pandas as pd
 import xarray as xr
+from pyproj import CRS
 
 from .raster_spec import IntFloat, Bbox, Resolutions, RasterSpec
 
@@ -75,7 +76,11 @@ def prepare_items(
             f"Cannot give both `bounds` {bounds} and `bounds_latlon` {bounds_latlon}."
         )
 
-    out_epsg = epsg
+    
+    bdc_crs = CRS.from_wkt('PROJCS["unknown",GEOGCS["unknown",DATUM["Unknown based on GRS80 ellipsoid",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["latitude_of_center",-12],PARAMETER["longitude_of_center",-54],PARAMETER["standard_parallel_1",-2],PARAMETER["standard_parallel_2",-22],PARAMETER["false_easting",5000000],PARAMETER["false_northing",10000000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]')
+    outProj = CRS.from_user_input(bdc_crs)
+    out_epsg = outProj
+
     out_bounds = bounds
     if resolution is not None and not isinstance(resolution, tuple):
         resolution = (resolution, resolution)
@@ -144,7 +149,7 @@ def prepare_items(
             except KeyError:
                 continue
 
-            asset_epsg = asset.get("proj:epsg", item_epsg)
+            asset_epsg = out_epsg
             asset_bbox = asset.get("proj:bbox", item_bbox)
             asset_shape = asset.get("proj:shape", item_shape)
             asset_transform = asset.get("proj:transform", item_transform)
@@ -203,7 +208,7 @@ def prepare_items(
                         "Please specify a CRS with the `epsg=` argument."
                     )
 
-            assert isinstance(out_epsg, int), f"`out_epsg` not found. {out_epsg=}"
+            #assert isinstance(out_epsg, int), f"`out_epsg` not found. {out_epsg=}"
             # ^ because if it was None initially, and we didn't error out in the above check, it's now always set
 
             if bounds_latlon is not None and out_bounds is None:
@@ -253,7 +258,7 @@ def prepare_items(
                 else:
                     if item_bbox_proj is None:
                         try:
-                            bbox_lonlat = item["bbox"]
+                            bbox_lonlat = item['bbox']
                         except KeyError:
                             asset_bbox_proj = None
                         else:
